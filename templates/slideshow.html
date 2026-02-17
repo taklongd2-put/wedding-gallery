@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Wedding Slideshow</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(to bottom, #f6f1e7, #e8d8b9);
+    overflow: hidden;
+}
+
+/* Top Center Control */
+.top-bar {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(to right, #c6a74f, #e8d8b9);
+    padding: 10px 25px;
+    border-radius: 40px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.25);
+    z-index: 100;
+}
+
+.title {
+    font-size: 18px;
+    font-weight: bold;
+    color: #5a3e1b;
+}
+
+.top-bar button {
+    padding: 6px 14px;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: bold;
+    background: #5a3e1b;
+    color: white;
+}
+
+#slideshow {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+
+.slide {
+    position: absolute;
+    max-width: 85%;
+    max-height: 80%;
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+    object-fit: contain;
+    opacity: 0;
+    transition: opacity 1.5s ease-in-out;
+}
+
+.slide.active {
+    opacity: 1;
+}
+</style>
+</head>
+
+<body>
+
+<div class="top-bar">
+    <div class="title">Wedding Slideshow</div>
+    <button onclick="window.location.href='/'">กลับแกลลอรี่</button>
+    <button onclick="stopSlideshow()">หยุด</button>
+</div>
+
+<div id="slideshow">
+    <img id="slide1" class="slide active">
+    <img id="slide2" class="slide">
+</div>
+
+<script>
+let images = [];
+let current = 0;
+let interval = null;
+let showingFirst = true;
+
+/* โหลดรูปครั้งแรก */
+loadImages(true);
+
+/* 🔁 ดึงรูปใหม่ทุก 30 วิ */
+setInterval(() => {
+    loadImages(false);
+}, 30000);
+
+/* 🎞️ เปลี่ยนรูปทุก 5 วิ */
+interval = setInterval(nextImage, 5000);
+
+function loadImages(firstLoad) {
+    fetch('/api/images')
+    .then(res => res.json())
+    .then(data => {
+
+        if (firstLoad) {
+            images = data;
+            if (images.length > 0) {
+                document.getElementById("slide1").src = images[0].url;
+            }
+        } else {
+            // เช็คว่ามีรูปใหม่เพิ่มไหม
+            if (data.length > images.length) {
+                images = data;
+                console.log("มีรูปใหม่เพิ่มแล้ว");
+            }
+        }
+    });
+}
+
+function nextImage() {
+    if (images.length === 0) return;
+
+    current = (current + 1) % images.length;
+
+    const slide1 = document.getElementById("slide1");
+    const slide2 = document.getElementById("slide2");
+
+    if (showingFirst) {
+        slide2.src = images[current].url;
+        slide2.classList.add("active");
+        slide1.classList.remove("active");
+    } else {
+        slide1.src = images[current].url;
+        slide1.classList.add("active");
+        slide2.classList.remove("active");
+    }
+
+    showingFirst = !showingFirst;
+}
+
+function stopSlideshow() {
+    clearInterval(interval);
+}
+</script>
+
+</body>
+</html>

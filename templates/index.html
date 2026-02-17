@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Wedding Gallery</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background: #f6f1e7;
+}
+
+.header {
+    text-align: center;
+    padding: 30px 20px 10px;
+}
+
+.header h1 {
+    color: #c6a74f;
+    margin-bottom: 15px;
+}
+
+.slideshow-btn {
+    padding: 10px 20px;
+    background: #c6a74f;
+    color: white;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 20px;
+    padding: 30px;
+}
+
+.card {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+    padding: 15px;
+    text-align: center;
+}
+
+.card img {
+    width: 100%;
+    border-radius: 10px;
+}
+
+.download-btn {
+    margin-top: 10px;
+    padding: 6px 12px;
+    background: #c6a74f;
+    border: none;
+    border-radius: 15px;
+    color: white;
+    cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+    <h1>Wedding Gallery</h1>
+    <button class="slideshow-btn" onclick="window.location.href='/slideshow'">
+        Start Slideshow
+    </button>
+</div>
+
+<div class="gallery" id="gallery"></div>
+
+<script>
+let images = [];
+
+/* โหลดครั้งแรก */
+loadImages(true);
+
+/* 🔁 Polling ทุก 30 วิ */
+setInterval(() => {
+    loadImages(false);
+}, 30000);
+
+function loadImages(firstLoad) {
+    fetch('/api/images')
+    .then(res => res.json())
+    .then(data => {
+
+        if (firstLoad) {
+            images = data;
+            renderGallery();
+        } else {
+            if (data.length > images.length) {
+                images = data;
+                renderGallery();
+                console.log("มีรูปใหม่เพิ่มใน Gallery");
+            }
+        }
+    });
+}
+
+function renderGallery() {
+    const gallery = document.getElementById("gallery");
+    gallery.innerHTML = "";
+
+    images.forEach(img => {
+        const card = document.createElement("div");
+        card.className = "card";
+
+        card.innerHTML = `
+            <img src="${img.url}">
+            <br>
+            <a href="${img.download_url}" target="_blank">
+                <button class="download-btn">Download</button>
+            </a>
+        `;
+
+        gallery.appendChild(card);
+    });
+}
+</script>
+
+</body>
+</html>
