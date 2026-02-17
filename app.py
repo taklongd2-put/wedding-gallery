@@ -1,61 +1,69 @@
 import os
-from flask import Flask, render_template, jsonify
+import json
+from flask import Flask, render_template, request, redirect, url_for
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
 app = Flask(__name__)
 
-# 🔹 ใส่ Folder ID ของคุณ
-FOLDER_ID = "1wl9oajwsniXb6Cjh6NmQa61CzPvWVg1I"
+# =========================
+# Google Sheets Setup
+# =========================
 
-SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
+SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
-# 🔹 ใช้ service-account.json ในโฟลเดอร์เดียวกับ app.py
-credentials = service_account.Credentials.from_service_account_file(
-    "service-account.json",
+# ดึง credentials จาก Environment Variable
+info = json.loads(os.environ["GOOGLE_CREDENTIALS"])
+
+credentials = service_account.Credentials.from_service_account_info(
+    info,
     scopes=SCOPES
 )
+SPREADSHEET_ID = "1TAeXgt_j7PhepauTIF2T-VR1bMPqigYXCHPJueLmiK8"
+RANGE_NAME = "Sheet1!A:C"
 
-drive_service = build('drive', 'v3', credentials=credentials)
+service = build("sheets", "v4", credentials=credentials)
+sheet = service.spreadsheets()
 
-
-def get_images():
-    results = drive_service.files().list(
-        q=f"'{FOLDER_ID}' in parents and mimeType contains 'image/' and trashed=false",
-        fields="files(id, name, createdTime)",
-        orderBy="createdTime desc",
-        pageSize=500
-    ).execute()
-
-    files = results.get('files', [])
-    images = []
-
-    for f in files:
-        images.append({
-            "id": f["id"],
-            "name": f["name"],
-            # 🔥 ใช้ thumbnail แบบเสถียร
-            "url": f"https://drive.google.com/thumbnail?id={f['id']}&sz=w1000",
-            "download_url": f"https://drive.google.com/uc?export=download&id={f['id']}"
-        })
-
-    return images
-
+# =========================
+# Routes
+# =========================
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    result = sheet.values().get(
+        spreadsheetId=SPREADSHEET_ID,
+        range=RANGE_NAME
+    ).execute()
+
+    values = result.get("values", [])
+
+    return render_template("index.html", values=values)
 
 
-@app.route("/api/images")
-def api_images():
-    return jsonify(get_images())
+@app.route("/add", methods=["POST"])
+def add():
+    name = request.form.get("name")
+    message = request.form.get("message")
+
+    body = {
+        "values": [[name, message]]
+    }
+
+    sheet.values().append(
+        spreadsheetId=SPREADSHEET_ID,
+        range=RANGE_NAME,
+        valueInputOption="RAW",
+        body=body
+    ).execute()
+
+    return redirect(url_for("index"))
 
 
-@app.route("/slideshow")
-def slideshow():
-    return render_template("slideshow.html")
-
+# =========================
+# Run App
+# =========================
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
