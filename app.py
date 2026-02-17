@@ -1,29 +1,28 @@
 import os
 import json
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
 app = Flask(__name__)
 
 # =========================
-# Google Sheets Setup
+# Google Drive Setup
 # =========================
 
-SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
 
-# ดึง credentials จาก Environment Variable
 info = json.loads(os.environ["GOOGLE_CREDENTIALS"])
 
 credentials = service_account.Credentials.from_service_account_info(
     info,
     scopes=SCOPES
 )
-SPREADSHEET_ID = "1TAeXgt_j7PhepauTIF2T-VR1bMPqigYXCHPJueLmiK8"
-RANGE_NAME = "Sheet1!A:C"
 
-service = build("sheets", "v4", credentials=credentials)
-sheet = service.spreadsheets()
+drive_service = build("drive", "v3", credentials=credentials)
+
+# ใส่ Folder ID ของคุณตรงนี้
+FOLDER_ID = "1wl9oajwsniXb6Cjh6NmQa61CzPvWVg1I"
 
 # =========================
 # Routes
@@ -31,33 +30,39 @@ sheet = service.spreadsheets()
 
 @app.route("/")
 def index():
-    result = sheet.values().get(
-        spreadsheetId=SPREADSHEET_ID,
-        range=RANGE_NAME
+    results = drive_service.files().list(
+        q=f"'{FOLDER_ID}' in parents and mimeType contains 'image/'",
+        fields="files(id, name)"
     ).execute()
 
-    values = result.get("values", [])
+    files = results.get("files", [])
 
-    return render_template("index.html", values=values)
+    images = [
+        {
+            "name": file["name"],
+            "url": f"https://drive.google.com/uc?id={file['id']}"
+        }
+        for file in files
+    ]
+
+    return render_template("index.html", images=images)
 
 
-@app.route("/add", methods=["POST"])
-def add():
-    name = request.form.get("name")
-    message = request.form.get("message")
-
-    body = {
-        "values": [[name, message]]
-    }
-
-    sheet.values().append(
-        spreadsheetId=SPREADSHEET_ID,
-        range=RANGE_NAME,
-        valueInputOption="RAW",
-        body=body
+@app.route("/slideshow")
+def slideshow():
+    results = drive_service.files().list(
+        q=f"'{FOLDER_ID}' in parents and mimeType contains 'image/'",
+        fields="files(id, name)"
     ).execute()
 
-    return redirect(url_for("index"))
+    files = results.get("files", [])
+
+    images = [
+        f"https://drive.google.com/uc?id={file['id']}"
+        for file in files
+    ]
+
+    return render_template("slideshow.html", images=images)
 
 
 # =========================
