@@ -4,7 +4,8 @@ from flask import Flask, render_template
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder="templates")
+
 
 # =========================
 # Google Drive Setup
